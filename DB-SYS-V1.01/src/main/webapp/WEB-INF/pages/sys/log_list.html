@@ -1,0 +1,174 @@
+  <div class="row">
+	<div class="col-xs-12">
+		<div class="box">
+			<div class="box-header">
+				<h3 class="box-title">日志管理</h3>
+
+				<div class="box-tools">
+					<div class="input-group input-group-sm" style="width: 350px;">
+						<input type="text" name="table_search" id="searchNameId"
+							class="form-control pull-right" placeholder="用户名">
+
+						<div class="input-group-btn">
+							<button type="button" class="btn btn-default btn-search">
+								<i class="fa fa-search"></i>
+							</button>
+							<button type="button" class="btn btn-default btn-delete">删除</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /.box-header -->
+			<div class="box-body table-responsive no-padding">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+							<th><input type="checkbox" id="checkAll">全选</th>
+							<th>用户名</th>
+							<th>操作</th>
+							<th>请求方法</th>
+							<th>请求参数</th>
+							<th>IP地址</th>
+							<th>执行时间</th>
+						</tr>
+					</thead>
+					<tbody id="tbodyId">
+						<tr>
+							<td colspan="7">数据加载中...</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div id="pageId" class="box-footer clearfix"></div>
+			<!-- /.box-body -->
+		</div>
+		<!-- /.box -->
+	</div>
+</div>
+<script type="text/javascript">
+	$(function(){
+		//加载分页页面
+		$("#pageId").load("doPageUI.do",function(){
+			doGetObjects();  //向服务器请求数据
+		});
+		
+		//按钮事件的注册
+		$(".input-group-btn")
+		.on("click",".btn-search",doQueryObjects)
+		.on("click",".btn-delete",doDeleteObjects);
+		
+		$("#tbodyId").on("click",".cBox",doChangeCheckAllState);
+		$("#checkAll").click(doChangeTBodyCheckboxState);
+	})
+	
+	function doGetObjects(){
+		$("#checkAll").prop("checked",false);
+		var pageCurrent=$("#pageId").data("pageCurrent");
+		if(!pageCurrent)pageCurrent=1;
+		var params={"pageCurrent":pageCurrent}; //Json格式的JavaScript对象
+		var username=$("#searchNameId").val();
+		if(username)params.username=username;
+		var url="log/doFindPageObjects.do";
+		$.getJSON(url,params,function(result){  //发起异步请求，并且指定回调函数
+			
+			if(result.state==1){               //处理服务器响应数据
+				var records=result.data.records;
+				var tBody=$("#tbodyId");
+				tBody.empty();
+				for(var i=0;i<records.length;i++){
+					var tr=$("<tr></tr>")
+					var tds=doCreateTds(records[i]);
+					tr.append(tds);
+					tBody.append(tr);
+				}
+				doSetPagination(result.data); //处理分页信息
+			}else{
+				alert(result.message);
+			} 
+		})
+	}
+	function doCreateTds(record){
+		var tds="<td><input type='checkbox' class='cBox' name='cItem' value='"+record.id+"'></td>"+
+		"<td>"+record.username+"</td>"+
+		"<td>"+record.operation+"</td>"+
+		"<td>"+record.method+"</td>"+
+		"<td>"+record.params+"</td>"+
+		"<td>"+record.ip+"</td>"+
+		"<td>"+record.time+"</td>";
+		return tds;
+	}
+	
+	function doGetCheckedIds(){
+		var array=[];
+		$("#tbodyId input[type='checkbox']").each(function(){
+			if($(this).prop('checked')){
+				array.push($(this).val());
+			}
+		})
+		return array;
+	}
+	
+	//搜索按钮事件的注册
+	//查询
+	function doQueryObjects(){
+		$("#pageId").data("pageCurrent",1);
+		doGetObjects();
+	}
+	
+	//删除
+	function doDeleteObjects(){
+		var IdArray=doGetCheckedIds();
+		if(!IdArray||IdArray.length==0){
+			alert("请选择需要删除的数据");
+			return;
+		}
+		if(!confirm("是否确认删除？")){
+			return;
+		}
+		var params={"ids":IdArray.toString()};
+		var url="log/doDeleteObjects.do";
+		$.post(url,params,function(result){
+			if(result.state==1){
+				alert(result.message);
+				doSetPageCurrent();    //最后一页和只剩一页时的特殊情况
+				doGetObjects();
+				
+			}else{
+				alert(result.message);
+			}
+		})
+	}
+	function doChangeTBodyCheckboxState(){
+		var checked = $(this).prop("checked");
+		$("#tbodyId input[type='checkbox']").each(function(){
+			$(this).prop("checked",checked);
+		}) 
+	};	
+	function doChangeCheckAllState() {
+		var flag = true;
+		$("#tbodyId input[type='checkbox']").each(function() {
+			flag = flag && $(this).prop("checked");
+		})
+		$("#checkAll").prop("checked", flag);
+	};
+	function doSetPageCurrent(){
+		var pageCount=$("#pageId").data("pageCount");
+		var pageCurrent=$("#pageId").data("pageCurrent");
+		var checkAll=$("#checkAll").prop("checked");
+		if(pageCurrent==pageCount&&pageCurrent>1&&checkAll){
+			pageCurrent--;
+			$("#pageId").data("pageCurrent",pageCurrent);
+		}
+	};
+</script>
+
+
+
+
+
+
+
+
+
+
+
